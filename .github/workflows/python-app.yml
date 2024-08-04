@@ -1,0 +1,35 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Sign
+
+on:
+  schedule: 
+    - cron: '11 16 * * *'
+  workflow_dispatch:
+    
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: action
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5.1.1
+      with:
+        python-version: "3.12"
+    - name: Install dependencies
+      run: |
+        python3 -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Run Jego
+      env: 
+        JEGO_TOKEN: ${{ secrets.JEGO_TOKEN }}
+        HTTP_PROXY: ${{ secrets.PROXY }}
+        HTTPS_PROXY: ${{ secrets.PROXY }}
+      run: |
+        python3 jego.py
