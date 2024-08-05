@@ -4,13 +4,17 @@ import json
 import hashlib
 import struct
 
+import warnings
 from functools import total_ordering
 from dataclasses import dataclass
 from typing import NamedTuple, Literal, List, Union
 try:
     from typing import Self
-except ModuleNotFoundError:  # python 310
-    from typing_extensions import Self 
+except ModuleNotFoundError:
+    from typing_extensions import Self
+
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from requests import session
 from Crypto.Cipher import AES
@@ -52,14 +56,14 @@ class JegoResponse(NamedTuple):
 
         dec_salt = JegoRequest.getDecryptSaltWithSec(self.sec)
         dec_sec = JegoRequest.getDecryptSecretWithSec(dec_salt)
-        body = b64decode(self.body)
-        decrypted = aes_ecb_pkcs7_decrypt(dec_sec, body)
+        body_ = b64decode(self.body)
+        decrypted = aes_ecb_pkcs7_decrypt(dec_sec, body_)
         return json.loads(decrypted)
 
 
 class JegoRequest:
     HEADER = {
-        'User-Agent': 'Roam/2024061701 CFNetwork/1496.0.7 Darwin/23.5.0'
+        'User-Agent': 'Roam/2024071001 CFNetwork/1496.0.7 Darwin/23.5.0'
     }
     # in app3
     HOST_ONLINE_JEGO_APP: str = 'https://app3.jegotrip.com.cn'
@@ -87,13 +91,14 @@ class JegoRequest:
 
         if params and params.get('token', None):
             params['lang'] = 'zh_CN'
-            params['timestamp'] = ts / 1000
+            params['timestamp'] = ts // 1000
             params['sign'] = self.getJegoTripSign(ts)
 
         encryptedSec = self.getEncryptSecretWithSalt(ts)
 
         content = {'sec': self.getRequestEncryptSecBase64WithSalt(ts), 'body': self.getRequestEncryptBodyBase64(encryptedSec, data)}
         data = json.dumps(content, separators=(",", ':'))
+        print(f'\t{self.host}{apiPath}\n\t', params, '\n\t', data)
         obj = self.session.post(f'{self.host}{apiPath}', params=params, data=data, headers=headers).json()
         return JegoResponse.from_json(obj)
 
@@ -121,8 +126,8 @@ class JegoRequest:
         return md5(secret.encode())[8:24]
 
     @staticmethod
-    def getRequestEncryptBodyBase64(encryptSecret, body) -> str:
-        encryptBody = aes_ecb_pkcs7_encrypt(encryptSecret, body)
+    def getRequestEncryptBodyBase64(encryptSecret, _body) -> str:
+        encryptBody = aes_ecb_pkcs7_encrypt(encryptSecret, _body)
         return b64encode(encryptBody).decode('utf-8')
 
     @staticmethod
@@ -175,13 +180,13 @@ class JegoSignin:
     req: 'JegoRequest'
 
 
-    def __init__(self, token: str):
+    def __init__(self, _token: str):
         self.req = JegoRequest()
-        self.token = token
+        self.token = _token
 
     def querySignConfigId(self) -> Task | None:
         resp = self.req.post(apiPath='/api/service/v1/mission/sign/querySign',
-                        params={'token': token},
+                        params={'token': self.token},
                         data='{}',
                         headers={'Content-Type': 'application/json'})
         assert resp.code == 0 and resp.msg == '成功', resp
@@ -195,13 +200,17 @@ class JegoSignin:
 
     def signIn(self, task: 'Task') -> (bool, JegoResponse):
         resp = self.req.post(apiPath='/api/service/v1/mission/sign/userSign',
-                        params={'token': token},
-                        data=f'{{"signConfigId": {task.id}}}',
-                        headers={'Content-Type': 'application/json'})
-        if not ( resp.code == 0 and resp.msg == '成功' ):
+                        params={'token': self.token},
+                        data=f'{{"signConfigId":{task.id}}}',
+                        headers={'Content-Type': 'application/json','Accept': 'application/json'})
+        if not (resp.code == 0 and resp.msg == '成功' ):
+            # !add warning message
+            if resp.code == 24005:
+                warnings.warn('Maybe you need to bind WeChat account firstly... it\'s stupid... but what can you do? nothing 🤮')
             return False, resp
-        body = resp.decode_body()
-        return body.get('rpcMsg', '') == 'SUCCESS'
+        body_ = resp.decode_body()
+
+        return body_.get('rpcMsg', '') == 'SUCCESS'
 
 
 if __name__ == '__main__':
