@@ -196,7 +196,7 @@ class JegoSignin:
     def signIn(self, task: 'Task') -> (bool, JegoResponse):
         resp = self.req.post(apiPath='/api/service/v1/mission/sign/userSign',
                         params={'token': token},
-                        data=f'{{"signConfigId":{task.id}}}',
+                        data=f'{{"signConfigId": {task.id}}}',
                         headers={'Content-Type': 'application/json'})
         if not ( resp.code == 0 and resp.msg == '成功' ):
             return False, resp
