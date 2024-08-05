@@ -85,7 +85,7 @@ class JegoRequest:
         assert apiPath.startswith('/'), f'excepted prefix "/": {apiPath}'
         ts = self.getTimeStamp()
 
-        if params and hasattr(params, 'token'):
+        if params and params.get('token', None):
             params['lang'] = 'zh_CN'
             params['timestamp'] = ts / 1000
             params['sign'] = self.getJegoTripSign(ts)
