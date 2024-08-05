@@ -208,9 +208,9 @@ class JegoSignin:
             if resp.code == 24005:
                 warnings.warn('Maybe you need to bind WeChat account firstly... it\'s stupid... but what can you do? nothing 🤮')
             return False, resp
-        body_ = resp.decode_body()
 
-        return body_.get('rpcMsg', '') == 'SUCCESS'
+        body_ = resp.decode_body()
+        return body_.get('rpcMsg', '') == 'SUCCESS', resp
 
 
 if __name__ == '__main__':
