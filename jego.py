@@ -98,7 +98,6 @@ class JegoRequest:
 
         content = {'sec': self.getRequestEncryptSecBase64WithSalt(ts), 'body': self.getRequestEncryptBodyBase64(encryptedSec, data)}
         data = json.dumps(content, separators=(",", ':'))
-        print(f'\t{self.host}{apiPath}\n\t', params, '\n\t', data)
         obj = self.session.post(f'{self.host}{apiPath}', params=params, data=data, headers=headers).json()
         return JegoResponse.from_json(obj)
 
